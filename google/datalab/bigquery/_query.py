@@ -68,7 +68,7 @@ class Query(object):
     self._values = values
 
     if data_sources is None:
-      data_sources = {}
+      data_sources = []
 
     self._code = None
     self._imports = []
@@ -81,26 +81,23 @@ class Query(object):
       if not self._values.__contains__(obj):
         raise Exception('Cannot find object %s.' % obj)
 
-    # Validate subqueries and UDFs when adding them to query
+    # Validate subqueries, UDFs, and datasources when adding them to query
     if self._subqueries:
       for subquery in self._subqueries:
         _validate_object(subquery)
     if self._udfs:
       for udf in self._udfs:
         _validate_object(udf)
-
-    # We need to take care not to include the same UDF code twice so we use sets.
-    udfs = set(udfs if udfs else [])
-    for value in list(self._values.values()):
-      if isinstance(value, _udf.UDF):
-        udfs.add(value)
-    included_udfs = set([])
+    if self._data_sources:
+      for ds in self._data_sources:
+        _validate_object(ds)
 
     self._external_tables = None
     if len(data_sources):
       self._external_tables = {}
-      for name, table in list(data_sources.items()):
-        if table.schema is None:
+      for name in data_sources:
+        table = self._values[name]
+        if table is None or table.schema is None:
           raise Exception('Referenced external table %s has no known schema' % name)
         self._external_tables[name] = table._to_query_json()
 
